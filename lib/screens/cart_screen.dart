@@ -23,6 +23,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _initNotifications() async {
+    debugPrint('Iniciando configuração de notificações...');
     // Configuração para Android
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     // Configuração para iOS/macOS
@@ -39,14 +40,22 @@ class _CartScreenState extends State<CartScreen> {
       linux: linux,
     );
 
-    await _notificationsPlugin.initialize(initSettings);
+    final bool? initialized = await _notificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (details) {
+        debugPrint('Notificação clicada: ${details.payload}');
+      },
+    );
+    debugPrint('Notificações inicializadas: $initialized');
 
     if (!kIsWeb && Platform.isAndroid) {
       final androidImplementation = _notificationsPlugin
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
-      await androidImplementation?.requestNotificationsPermission();
+      final bool? granted = await androidImplementation
+          ?.requestNotificationsPermission();
+      debugPrint('Permissão de notificação (Android): $granted');
     }
   }
 
@@ -65,22 +74,46 @@ class _CartScreenState extends State<CartScreen> {
     // Suporte para Android, iOS, macOS, Linux e Windows (via plugin padrão)
     // Nota: Windows não requer configurações específicas no NotificationDetails
     const androidDetails = AndroidNotificationDetails(
-      'order_channel',
+      'order_channel_v2', // ID do canal alterado para garantir atualização das configs
       'Pedidos',
       channelDescription: 'Notificações de pedidos',
       importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
     );
     const details = NotificationDetails(android: androidDetails);
 
     try {
+      debugPrint('Verificando permissões antes de enviar...');
+      if (!kIsWeb && Platform.isAndroid) {
+        final androidImplementation = _notificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        final bool? granted = await androidImplementation
+            ?.areNotificationsEnabled();
+        debugPrint('Permissões habilitadas: $granted');
+        if (granted == false) {
+          // Tentar pedir permissão novamente
+          final bool? requestResult = await androidImplementation
+              ?.requestNotificationsPermission();
+          if (requestResult == false) {
+            throw Exception('Permissão de notificação negada pelo usuário.');
+          }
+        }
+      }
+
+      debugPrint('Tentando exibir notificação...');
       await _notificationsPlugin.show(
         0,
         'Compra Finalizada!',
         'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado.',
         details,
       );
+      debugPrint('Notificação enviada com sucesso.');
     } catch (e) {
+      debugPrint('Erro ao enviar notificação: $e');
       // Fallback se a notificação falhar (ex: Web sem configuração extra)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

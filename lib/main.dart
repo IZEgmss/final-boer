@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart'; // Feature 6
-import 'package:firebase_messaging/firebase_messaging.dart'; // Feature 6
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
+// Feature 6
 import 'package:finalboer/providers/cart_provider.dart';
 import 'package:finalboer/screens/list_products.dart'; // Importe a tela renomeada
+import 'package:finalboer/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,15 +23,8 @@ void main() async {
     debugPrint("Erro ao inicializar Firebase: $e");
   }
 
-  // Configuração básica de notificação
-  if (kIsWeb || Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
-    try {
-      FirebaseMessaging messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission();
-    } catch (e) {
-      debugPrint("Erro ao configurar notificações: $e");
-    }
-  }
+  // Inicializar Serviço de Notificações (Local + FCM)
+  await NotificationService().init();
 
   runApp(const MyApp());
 }
