@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:finalboer/providers/cart_provider.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
+import 'package:finalboer/services/notification_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -13,52 +11,6 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
-  @override
-  void initState() {
-    super.initState();
-    _initNotifications();
-  }
-
-  Future<void> _initNotifications() async {
-    debugPrint('Iniciando configuração de notificações...');
-    // Configuração para Android
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    // Configuração para iOS/macOS
-    const iOS = DarwinInitializationSettings();
-    // Configuração para Linux
-    const linux = LinuxInitializationSettings(
-      defaultActionName: 'Open notification',
-    );
-
-    final initSettings = InitializationSettings(
-      android: android,
-      iOS: iOS,
-      macOS: iOS,
-      linux: linux,
-    );
-
-    final bool? initialized = await _notificationsPlugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        debugPrint('Notificação clicada: ${details.payload}');
-      },
-    );
-    debugPrint('Notificações inicializadas: $initialized');
-
-    if (!kIsWeb && Platform.isAndroid) {
-      final androidImplementation = _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      final bool? granted = await androidImplementation
-          ?.requestNotificationsPermission();
-      debugPrint('Permissão de notificação (Android): $granted');
-    }
-  }
-
   Future<void> _checkout(double total) async {
     if (total <= 0) {
       ScaffoldMessenger.of(
@@ -69,52 +21,17 @@ class _CartScreenState extends State<CartScreen> {
 
     // Simular processamento
     await Future.delayed(const Duration(seconds: 2));
-
-    // Enviar notificação
-    // Suporte para Android, iOS, macOS, Linux e Windows (via plugin padrão)
-    // Nota: Windows não requer configurações específicas no NotificationDetails
-    const androidDetails = AndroidNotificationDetails(
-      'order_channel_v2', // ID do canal alterado para garantir atualização das configs
-      'Pedidos',
-      channelDescription: 'Notificações de pedidos',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-    );
-    const details = NotificationDetails(android: androidDetails);
-
     try {
-      debugPrint('Verificando permissões antes de enviar...');
-      if (!kIsWeb && Platform.isAndroid) {
-        final androidImplementation = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
-        final bool? granted = await androidImplementation
-            ?.areNotificationsEnabled();
-        debugPrint('Permissões habilitadas: $granted');
-        if (granted == false) {
-          // Tentar pedir permissão novamente
-          final bool? requestResult = await androidImplementation
-              ?.requestNotificationsPermission();
-          if (requestResult == false) {
-            throw Exception('Permissão de notificação negada pelo usuário.');
-          }
-        }
-      }
-
-      debugPrint('Tentando exibir notificação...');
-      await _notificationsPlugin.show(
-        0,
-        'Compra Finalizada!',
-        'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado.',
-        details,
+      await NotificationService().showLocalNotification(
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: 'Compra Finalizada!',
+        body:
+            'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado no Windows.',
+        payload: 'pedido_confirmado',
       );
       debugPrint('Notificação enviada com sucesso.');
     } catch (e) {
       debugPrint('Erro ao enviar notificação: $e');
-      // Fallback se a notificação falhar (ex: Web sem configuração extra)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

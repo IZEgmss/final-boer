@@ -58,13 +58,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final int columns = width < 600
+        ? 1
+        : width < 900
+        ? 2
+        : width < 1200
+        ? 3
+        : 4;
+    final double aspect = width < 600 ? 0.78 : 0.85;
+    final double horizontalPadding = width >= 1200 ? 24 : 12;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Loja Flutter'),
-        backgroundColor:
-            Colors.blue, // Mudou de verde para azul conforme imagem do doc
         actions: [
-          // Ícone do carrinho com contador
           Consumer<CartProvider>(
             builder: (_, cart, ch) => Badge(
               label: Text(cart.itemCount.toString()),
@@ -80,67 +88,125 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Feature 5: Barra de Pesquisa
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _filterProducts,
-              decoration: const InputDecoration(
-                labelText: 'Pesquisar produto ou categoria',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: _filteredProducts.length,
-                    itemBuilder: (ctx, i) {
-                      final product = _filteredProducts[i];
-                      return ListTile(
-                        leading: Image.network(
-                          product.imageUrl,
-                          width: 50,
-                          errorBuilder: (context, error, stack) =>
-                              const Icon(Icons.image),
-                        ),
-                        title: Text(product.name),
-                        subtitle: Text(
-                          'R\$ ${product.price.toStringAsFixed(2)}',
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(
-                            Icons.add_shopping_cart,
-                            color: Colors.green,
-                          ),
-                          onPressed: () {
-                            // Funcionalidade: Adicionar ao carrinho [cite: 555]
-                            Provider.of<CartProvider>(
-                              context,
-                              listen: false,
-                            ).addItem(product);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${product.name} adicionado!'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _filterProducts,
+                    decoration: const InputDecoration(
+                      hintText: 'Pesquisar produto ou categoria',
+                      prefixIcon: Icon(Icons.search),
+                    ),
                   ),
+                ),
+              ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : GridView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          childAspectRatio: aspect,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: _filteredProducts.length,
+                        itemBuilder: (ctx, i) {
+                          final product = _filteredProducts[i];
+                          return Card(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(16),
+                                      topRight: Radius.circular(16),
+                                    ),
+                                    child: Image.network(
+                                      product.imageUrl,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stack) =>
+                                          const Icon(Icons.image, size: 48),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product.name,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'R\$ ${product.price.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      FilledButton.icon(
+                                        icon: const Icon(
+                                          Icons.add_shopping_cart,
+                                        ),
+                                        label: const Text('Adicionar'),
+                                        onPressed: () {
+                                          Provider.of<CartProvider>(
+                                            context,
+                                            listen: false,
+                                          ).addItem(product);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                '${product.name} adicionado!',
+                                              ),
+                                              duration: const Duration(
+                                                seconds: 1,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      // Botão para cadastrar produtos (Mantendo a funcionalidade original)
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.add),
+        label: const Text('Cadastrar'),
         onPressed: () {
           Navigator.of(context)
               .push(
