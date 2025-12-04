@@ -78,11 +78,12 @@ class NotificationService {
     // Handler para mensagens em primeiro plano
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('Mensagem recebida em primeiro plano: ${message.data}');
-      
+
       if (message.notification != null) {
         debugPrint(
-            'Mensagem também contém notificação: ${message.notification!.title}');
-        
+          'Mensagem também contém notificação: ${message.notification!.title}',
+        );
+
         showLocalNotification(
           id: message.hashCode,
           title: message.notification!.title ?? 'Nova Notificação',
@@ -96,11 +97,15 @@ class NotificationService {
     _getAndPrintFCMToken();
   }
 
-  void _getAndPrintFCMToken() async   {
+  void _getAndPrintFCMToken() async {
     final token = await FirebaseMessaging.instance.getToken();
-    debugPrint('================================================================');
+    debugPrint(
+      '================================================================',
+    );
     debugPrint('TOKEN FCM DO DISPOSITIVO: $token');
-    debugPrint('================================================================');
+    debugPrint(
+      '================================================================',
+    );
 
     // Ouve por atualizações do token
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
@@ -116,8 +121,8 @@ class NotificationService {
   }) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-          'high_importance_channel', // id
-          'High Importance Notifications', // title
+          'high_importance_channel',
+          'High Importance Notifications',
           channelDescription:
               'This channel is used for important notifications.',
           importance: Importance.max,
@@ -125,8 +130,12 @@ class NotificationService {
           showWhen: true,
         );
 
+    const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails();
+
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
     );
 
     await flutterLocalNotificationsPlugin.show(

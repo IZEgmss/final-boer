@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:finalboer/providers/cart_provider.dart';
 import 'package:finalboer/services/notification_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -19,9 +23,48 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Simular processamento
-    await Future.delayed(const Duration(seconds: 2));
-    try {
+    await Future.delayed(const Duration(seconds: 1));
+    if (kIsWeb) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        final uri = Uri.parse('http://localhost:3000/send-purchase');
+        final resp = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'token': token,
+            'title': 'Compra Finalizada!',
+            'body':
+                'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado.',
+            'data': {'pedidoTotal': total.toStringAsFixed(2)},
+          }),
+        );
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          await NotificationService().showLocalNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: 'Compra Finalizada!',
+            body:
+                'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado.',
+            payload: 'pedido_confirmado',
+          );
+        } else {
+          await NotificationService().showLocalNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: 'Compra Finalizada!',
+            body:
+                'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado.',
+            payload: 'pedido_confirmado',
+          );
+        }
+      } catch (_) {
+        await NotificationService().showLocalNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: 'Compra Finalizada!',
+          body: 'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado.',
+          payload: 'pedido_confirmado',
+        );
+      }
+    } else {
       await NotificationService().showLocalNotification(
         id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         title: 'Compra Finalizada!',
@@ -29,18 +72,6 @@ class _CartScreenState extends State<CartScreen> {
             'Seu pedido de R\$ ${total.toStringAsFixed(2)} foi confirmado no Windows.',
         payload: 'pedido_confirmado',
       );
-      debugPrint('Notificação enviada com sucesso.');
-    } catch (e) {
-      debugPrint('Erro ao enviar notificação: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Compra de R\$ ${total.toStringAsFixed(2)} finalizada!',
-            ),
-          ),
-        );
-      }
     }
 
     // Limpar carrinho
